@@ -1,22 +1,26 @@
-﻿# 🔨 BUILD aşaması
+﻿# ---- Stage 1: Build ----
+# Bu aşama, kodu derlemek için .NET 8 SDK'sını kullanır.
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Projeyi kopyala
+# Build context'i artık proje klasörü olduğu için, dosya yollarından alt klasör adını kaldırdık.
+COPY ["TextSummarizerAPI.csproj", "."]
+RUN dotnet restore "./TextSummarizerAPI.csproj"
+
+# Geri kalan tüm dosyaları kopyalıyoruz.
 COPY . .
 
-# NuGet paketlerini indir
-RUN dotnet restore
+# Projeyi build ediyoruz.
+RUN dotnet build "TextSummarizerAPI.csproj" -c Release -o /app/build
 
-# Projeyi release modda build et
-RUN dotnet publish -c Release -o /app/publish
+# ---- Stage 2: Publish ----
+# Derlenmiş uygulamayı yayınlanmaya hazır hale getiriyoruz.
+FROM build AS publish
+RUN dotnet publish "TextSummarizerAPI.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-# 🚀 RUN aşaması
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+# ---- Stage 3: Final ----
+# Bu son aşama, sadece uygulamayı çalıştırmak için gerekenleri içeren küçük ve güvenli bir imaj oluşturur.
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
-
-# Yayınlanan dosyaları kopyala
-COPY --from=build /app/publish .
-
-# Uygulamayı çalıştır
+COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "TextSummarizerAPI.dll"]
