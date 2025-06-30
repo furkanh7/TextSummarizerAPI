@@ -1,0 +1,22 @@
+﻿# 🔨 BUILD aşaması
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Projeyi kopyala
+COPY . .
+
+# NuGet paketlerini indir
+RUN dotnet restore
+
+# Projeyi release modda build et
+RUN dotnet publish -c Release -o /app/publish
+
+# 🚀 RUN aşaması
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+
+# Yayınlanan dosyaları kopyala
+COPY --from=build /app/publish .
+
+# Uygulamayı çalıştır
+ENTRYPOINT ["dotnet", "TextSummarizerAPI.dll"]
